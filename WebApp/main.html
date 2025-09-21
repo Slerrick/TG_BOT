@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="style.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Покупка SKM</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">SKM</div>
+            <h1>Покупка валюты SKM</h1>
+            <p class="subtitle">Выберите количество для покупки</p>
+        </div>
+        
+        <div class="purchase-options">
+            <div class="purchase-option" data-amount="1000" data-price="10">
+                <span class="amount">1,000 SKM</span>
+                <span class="price">10 stars</span>
+            </div>
+            <div class="purchase-option" data-amount="1500" data-price="15">
+                <span class="amount">1,500 SKM</span>
+                <span class="price">15 stars</span>
+            </div>
+            <div class="purchase-option" data-amount="3000" data-price="25">
+                <span class="amount">3,000 SKM</span>
+                <span class="price">25 stars</span>
+            </div>
+            <div class="purchase-option" data-amount="5000" data-price="35">
+                <span class="amount">5,000 SKM</span>
+                <span class="price">35 stars</span>
+            </div>
+        </div>
+        
+        <button id="purchaseBtn" class="btn" disabled>Купить</button>
+        
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+            <p>Обработка платежа...</p>
+        </div>
+        
+        <div id="successMessage" class="success-message">
+            Покупка успешно завершена! SKM будут зачислены на ваш счет.
+        </div>
+        
+        <div id="errorMessage" class="error-message">
+            Произошла ошибка. Пожалуйста, попробуйте еще раз.
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
