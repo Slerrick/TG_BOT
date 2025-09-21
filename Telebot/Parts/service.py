@@ -41,13 +41,13 @@ def send_zip_file(chat_id, zip_path="./javascript-snakes-master.zip"):
         print(f"Ошибка при отправке файла: {e}")
         bot.send_message(chat_id, "Ошибка при отправке файла.")
 
-def payment(message, amount):
+def payment(message, price, amount):
     """Обработка платежа звездами"""
     from main import bot
     try:
         # Сохраняем информацию о платеже
         payment_sessions[message.chat.id] = {
-            'amount': amount,
+            'price': price,
             'user_id': message.from_user.id,
             'timestamp': datetime.now()
         }
@@ -57,9 +57,9 @@ def payment(message, amount):
             title="Пополнение баланса SKM",
             description=f"Пополнение баланса на {amount} SKM",
             invoice_payload=f"skm_topup_{amount}_{message.from_user.id}",
-            provider_token=PAYMENT_TOKEN,
+            provider_token="",
             currency="XTR",
-            prices=[types.LabeledPrice(label=f"{amount} SKM", amount=amount * 100)],
+            prices=[types.LabeledPrice(label=f"{amount} SKM", amount=price)],
             photo_url="https://img.icons8.com/color/96/000000/star--v1.png",
             photo_size=100,
             photo_width=100,

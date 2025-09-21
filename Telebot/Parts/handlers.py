@@ -100,12 +100,13 @@ def register_handlers(bot):
         try:
             res = json.loads(message.web_app_data.data)
             amount = res.get('amount', 0)
+            price = res.get('price', 0)
             
             if amount > 0:
                 bot.send_message(
                     message.chat.id, 
                     f"Для пополнения баланса на {amount} SKM нажмите кнопку оплаты:",
-                    reply_markup=get_payment_keyboard(amount)
+                    reply_markup=get_payment_keyboard(price, amount)
                 )
             else:
                 bot.send_message(message.chat.id, "Неверная сумма для пополнения.")
@@ -194,8 +195,9 @@ def register_handlers(bot):
     def handle_pay(call):
         """Обработчик оплаты"""
         try:
-            amount = int(call.data.split("_")[1])
-            payment(call.message, amount)
+            price = int(call.data.split("_")[1])
+            amount = int(call.data.split("_")[2])
+            payment(call.message, price, amount)
         except (ValueError, IndexError):
             bot.send_message(call.message.chat.id, "Ошибка обработки платежа.")
         bot.answer_callback_query(call.id)

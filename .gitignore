@@ -1,5 +1,6 @@
 # Директории кэша Python
 **/__pycache__/
+*.pyc
 
 # Конкретный файл конфигурации
 configserver.py

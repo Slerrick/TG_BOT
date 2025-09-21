@@ -28,7 +28,7 @@ def get_shop_keyboard():
     keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True)
     keyboard.add(types.KeyboardButton(
         text="Открыть веб-приложение",
-        web_app=types.WebAppInfo(url="https://slerrick.github.io/Telegram_Bot_webApp/")
+        web_app=types.WebAppInfo(url="https://slerrick.github.io/TG_BOT/")
     ))
     keyboard.add(types.KeyboardButton("Назад"))
     return keyboard
@@ -53,10 +53,10 @@ def get_website_keyboard():
     )
     return keyboard
 
-def get_payment_keyboard(amount):
+def get_payment_keyboard(price, amount):
     keyboard = types.InlineKeyboardMarkup()
     keyboard.row(
-        types.InlineKeyboardButton(f"Оплатить {amount} звезд", callback_data=f"pay_{amount}"),
+        types.InlineKeyboardButton(f"Оплатить {price} звезд", callback_data=f"pay_{price}_{amount}"),
         types.InlineKeyboardButton("Отмена", callback_data="cancel_payment")
     )
     return keyboard
