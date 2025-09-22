@@ -1,22 +1,24 @@
 import json
-from Parts.configserver import HELLO_TEXT, LIST_COMMANDS, FIB_TEXT
+from datetime import datetime
+from telebot import TeleBot
+from telebot import types
+from Parts.configserver import HELLO_TEXT, LIST_COMMANDS, FIB_TEXT, FRONTEND, FRONTEND_MARKDOWN, LINUX, LINUX_MARKDOWN, PHOTOSHOP
 from Parts.keyboardfunction import (
     get_main_menu_keyboard, get_registration_keyboard, 
     get_shop_keyboard, get_categories_keyboard, 
-    get_website_keyboard, get_back_keyboard,
-    get_payment_keyboard
+    get_website_keyboard, get_payment_keyboard
 )
-from Parts.service import check_admins, send_zip_file, payment, payment_sessions
+from Parts.service import check_admins, payment_sessions
 from database import (
     set_user_name, save_info_user, delete_account, 
     set_skm_user, list_users, list_admins, enter_user, 
-    reg_user_first_check, create_table
+    reg_user_first_check, create_table, update_user_balance
 )
 
 # Глобальная переменная для хранения состояний пользователей
 user_states = {}
 
-def register_handlers(bot):
+def register_handlers(bot: TeleBot):
     # Обработчики команд
     @bot.message_handler(commands=["start"])
     def cmd_start(message):
@@ -67,32 +69,78 @@ def register_handlers(bot):
         """Обработчик медиафайлов"""
         bot.reply_to(message, "Отличный файл! Жаль, что пока я не могу работать с ним(")
 
+    @bot.pre_checkout_query_handler(func=lambda query: True)
+    def process_pre_checkout_query(pre_checkout_query):
+        """Обработчик pre-checkout запроса"""
+        try:
+            print(f"PreCheckoutQuery получен: {pre_checkout_query.id}")
+            bot.answer_pre_checkout_query(pre_checkout_query.id, ok=True)
+            print("PreCheckoutQuery обработан успешно")
+        except Exception as e:
+            print(f"Ошибка в pre_checkout: {e}")
+            bot.answer_pre_checkout_query(pre_checkout_query.id, ok=False, error_message="Произошла ошибка")
+
+    def payment(call: types.CallbackQuery, price, amount):
+        """Обработка платежа звездами"""
+        try:
+            chat_id = call.message.chat.id
+            user_id = call.from_user.id
+            
+            # Сохраняем информацию о платеже (используем amount вместо price)
+            payment_sessions[chat_id] = {
+                'amount': amount,  # ← исправлено на amount
+                'user_id': user_id,
+                'timestamp': datetime.now(),
+                'price': price  # ← можно сохранить и price для отладки
+            }
+            
+            bot.send_invoice(
+                chat_id=chat_id,  # ← исправлено на chat_id из сообщения
+                title="Пополнение баланса SKM",
+                description=f"Пополнение баланса на {amount} SKM",
+                invoice_payload=f"skm_topup_{amount}_{user_id}_{datetime.now().timestamp()}",
+                provider_token="",
+                currency="XTR",
+                prices=[types.LabeledPrice(label="XTR", amount=price)],
+                start_parameter='stars-payment'
+            )
+            print(f"Создание инвойса для chat_id: {chat_id}, amount: {amount}")
+        except Exception as e:
+            print(f"Ошибка в payment: {e}")
+            bot.send_message(call.message.chat.id, "❌ Ошибка при создании платежа")
+
     @bot.message_handler(content_types=["successful_payment"])
     def handle_successful_payment(message):
         """Обработчик успешного платежа"""
         try:
-            payment_info = payment_sessions.get(message.chat.id, {})
+            chat_id = message.chat.id
+            payment_info = payment_sessions.get(chat_id, {})
+            
+            # Используем amount который сохранили
             amount = payment_info.get('amount', 0)
             user_id = payment_info.get('user_id', message.from_user.id)
+            
+            print(f"Успешный платеж: chat_id={chat_id}, amount={amount}")
             
             if amount > 0:
                 success = set_skm_user(user_id, amount)
                 if success:
                     bot.send_message(
-                        message.chat.id, 
+                        chat_id, 
                         f"✅ Оплата прошла успешно! На ваш счет зачислено {amount} SKM."
                     )
                     
-                    if message.chat.id in payment_sessions:
-                        del payment_sessions[message.chat.id]
+                    # Очищаем сессию
+                    if chat_id in payment_sessions:
+                        del payment_sessions[chat_id]
                 else:
-                    bot.send_message(message.chat.id, "❌ Не удалось зачислить средства.")
+                    bot.send_message(chat_id, "❌ Не удалось зачислить средства.")
             else:
-                bot.send_message(message.chat.id, "❌ Не удалось обработать платеж.")
+                bot.send_message(chat_id, "❌ Не удалось определить сумму платежа.")
                 
         except Exception as e:
-            print(f"Ошибка при обработке платежа: {e}")
-            bot.send_message(message.chat.id, "❌ Произошла ошибка при обработке платежа.")
+            print(f"Ошибка в successful_payment: {e}")
+            bot.send_message(message.chat.id, "❌ Произошла ошибка при обработке платежа")
 
     @bot.message_handler(content_types=["web_app_data"])
     def handle_web_app_data(message):
@@ -102,7 +150,7 @@ def register_handlers(bot):
             amount = res.get('amount', 0)
             price = res.get('price', 0)
             
-            if amount > 0:
+            if int(amount) > 0:
                 bot.send_message(
                     message.chat.id, 
                     f"Для пополнения баланса на {amount} SKM нажмите кнопку оплаты:",
@@ -118,13 +166,41 @@ def register_handlers(bot):
             print(f"Ошибка обработки web app данных: {e}")
             bot.send_message(message.chat.id, "Произошла ошибка")
 
-    # Обработчики текстовых сообщений
-    @bot.message_handler(func=lambda message: message.text == "Получить Photoshop2024")
-    def handle_get_file(message):
-        """Обработчик получения файла"""
-        bot.send_message(message.chat.id, "Подождите...")
-        send_zip_file(message.chat.id)
+    @bot.callback_query_handler(func=lambda call: call.data.startswith('buy_'))
+    def handle_purchase(call):
+        """Обработчик покупки через callback"""
+        try:
+            user_id = call.from_user.id
+            chat_id = call.message.chat.id
+            
+            # Извлекаем ID товара из callback данных
+            amount = int(call.data.split('_')[1])
+            product = call.data.split('_')[2]
+            # Проверяем баланс пользователя
+            user_balance = update_user_balance(user_id, amount)
+        
+            if user_balance:
 
+                bot.send_message(chat_id, f"✅ Оплата прошла успешно! {abs(amount)} SKM списано с вашего счета.")
+                give_product(chat_id, product)
+            else:
+                bot.send_message(chat_id, "❌ Ошибка при списании средств.")
+            
+            bot.answer_callback_query(call.id)
+
+        except Exception as e:
+            print(f"Ошибка обработки покупки: {e}")
+            bot.answer_callback_query(call.id, "Произошла ошибка")
+
+    def give_product(chat_id, product):
+        match product:
+            case "photoshop2024":
+                bot.send_message(chat_id, PHOTOSHOP)
+                bot.send_message(chat_id, "Для корректной работы необходимо скачать все файлы в одну папку и установить adobe creative cloud (бесплатно)")
+            case _:
+                pass
+
+    # Обработчики текстовых сообщений
     @bot.message_handler(func=lambda message: message.text == "Аккаунт")
     def handle_account(message):
         """Обработчик аккаунта"""
@@ -133,7 +209,6 @@ def register_handlers(bot):
     @bot.message_handler(func=lambda message: message.text == "Назад")
     def handle_back(message):
         """Обработчик кнопки Назад"""
-        bot.send_message(message.chat.id, "👾", reply_markup=get_back_keyboard())
         bot.send_message(message.chat.id, "Выберите действие:", reply_markup=get_main_menu_keyboard())
 
     @bot.message_handler(func=lambda message: message.text == "Магазин SKM")
@@ -192,12 +267,12 @@ def register_handlers(bot):
         bot.answer_callback_query(call.id)
 
     @bot.callback_query_handler(func=lambda call: call.data.startswith("pay_"))
-    def handle_pay(call):
+    def handle_pay(call: types.CallbackQuery):
         """Обработчик оплаты"""
         try:
             price = int(call.data.split("_")[1])
             amount = int(call.data.split("_")[2])
-            payment(call.message, price, amount)
+            payment(call, price, amount)
         except (ValueError, IndexError):
             bot.send_message(call.message.chat.id, "Ошибка обработки платежа.")
         bot.answer_callback_query(call.id)
@@ -207,6 +282,19 @@ def register_handlers(bot):
         """Обработчик отмены оплаты"""
         bot.send_message(call.message.chat.id, "Оплата отменена.")
         bot.answer_callback_query(call.id)
+
+    @bot.callback_query_handler(func=lambda call: call.data == "prog")
+    def handle_hardware(call):
+        bot.send_message(call.message.chat.id, LINUX)
+        bot.send_message(call.message.chat.id, LINUX_MARKDOWN)
+        bot.answer_callback_query(call.id)
+
+    @bot.callback_query_handler(func=lambda call: call.data == "learnfrontend")
+    def handle_hardware(call):
+        bot.send_message(call.message.chat.id, FRONTEND)
+        bot.send_message(call.message.chat.id, FRONTEND_MARKDOWN)
+        bot.answer_callback_query(call.id)
+        
 
     # Обработчики состояний
     @bot.message_handler(func=lambda message: user_states.get(message.from_user.id, {}).get("state") == "waiting_for_username")

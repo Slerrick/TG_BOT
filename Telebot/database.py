@@ -29,7 +29,7 @@ def initialize_databases():
                     salt TEXT,
                     lastseen DATE,
                     status VARCHAR(20) DEFAULT "Пользователь",
-                    balance INTEGER DEFAULT 5000
+                    balance INTEGER DEFAULT 500
                 )''')
             db.commit()
             
@@ -91,19 +91,36 @@ def delete_user(user_id):
         print(f"Ошибка при удалении пользователя: {e}")
         return False
 
-def update_user_balance(user_id, amount):
-    """Обновление баланса пользователя"""
+def update_user_balance(user_id: int, amount: int) -> bool:
+    """Обновление баланса пользователя с проверкой на отрицательный баланс"""
     try:
         with sqlite3.connect("./DATA.DB") as db:
             cursor = db.cursor()
             cursor.execute(
-                "UPDATE users SET balance = balance + ? WHERE id = ?",
-                (amount, user_id)
+                "SELECT balance FROM users WHERE id = ?",
+                (user_id,)
             )
-            db.commit()
-            return True
+            result = cursor.fetchone()
+            if result is None:
+                print(f"Пользователь {user_id} не найден")
+                return False
+            current_balance = result[0]
+            if current_balance + amount > 0:
+                cursor.execute(
+                "UPDATE users SET balance = balance + ? WHERE id = ?", (amount, user_id)
+                )
+                db.commit()
+                return True
+            return False
+            
+            
+            
+            
+    except sqlite3.Error as e:
+        print(f"Ошибка базы данных при обновлении баланса: {e}")
+        return False
     except Exception as e:
-        print(f"Ошибка при обновлении баланса: {e}")
+        print(f"Неожиданная ошибка при обновлении баланса: {e}")
         return False
 
 def get_user_credentials(username):

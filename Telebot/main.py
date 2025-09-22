@@ -19,4 +19,4 @@ if __name__ == "__main__":
     cleanup_thread.start()
     
     print("Бот запущен...")
-    bot.infinity_polling()
+    bot.infinity_polling(none_stop=True)

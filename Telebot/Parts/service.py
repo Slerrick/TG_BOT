@@ -1,7 +1,5 @@
 import time
 from datetime import datetime
-from telebot import types
-from Parts.configserver import PAYMENT_TOKEN
 from database import clear_admins_db, delete_inactive_accounts_db, check_admins_db
 from info_sys import complex_check
 
@@ -28,52 +26,6 @@ def check_time():
 def check_admins(user_id):
     """Проверка прав администратора"""
     return check_admins_db(user_id)
-
-def send_zip_file(chat_id, zip_path="./javascript-snakes-master.zip"):
-    """Отправка ZIP файла"""
-    from main import bot
-    try:
-        with open(zip_path, "rb") as zip_file:
-            bot.send_document(chat_id, zip_file, caption="Вот ваш ZIP-архив!")
-    except FileNotFoundError:
-        bot.send_message(chat_id, "Файл не найден. Повторите попытку позже.")
-    except Exception as e:
-        print(f"Ошибка при отправке файла: {e}")
-        bot.send_message(chat_id, "Ошибка при отправке файла.")
-
-def payment(message, price, amount):
-    """Обработка платежа звездами"""
-    from main import bot
-    try:
-        # Сохраняем информацию о платеже
-        payment_sessions[message.chat.id] = {
-            'price': price,
-            'user_id': message.from_user.id,
-            'timestamp': datetime.now()
-        }
-        
-        bot.send_invoice(
-            chat_id=message.chat.id,
-            title="Пополнение баланса SKM",
-            description=f"Пополнение баланса на {amount} SKM",
-            invoice_payload=f"skm_topup_{amount}_{message.from_user.id}",
-            provider_token="",
-            currency="XTR",
-            prices=[types.LabeledPrice(label=f"{amount} SKM", amount=price)],
-            photo_url="https://img.icons8.com/color/96/000000/star--v1.png",
-            photo_size=100,
-            photo_width=100,
-            photo_height=100,
-            need_name=False,
-            need_phone_number=False,
-            need_email=False,
-            need_shipping_address=False,
-            is_flexible=False
-        )
-        
-    except Exception as e:
-        print(f"Ошибка при создании платежа: {e}")
-        bot.send_message(message.chat.id, "Ошибка при создании платежа. Попробуйте позже.")
 
 def cleanup_payment_sessions():
     """Очистка устаревших платежных сессий"""

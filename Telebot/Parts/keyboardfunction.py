@@ -36,12 +36,11 @@ def get_shop_keyboard():
 def get_categories_keyboard():
     keyboard = types.InlineKeyboardMarkup()
     keyboard.row(
-        types.InlineKeyboardButton("Программы", callback_data="prog"),
-        types.InlineKeyboardButton("Материалы для изучения", callback_data="learn")
+        types.InlineKeyboardButton("Программы Linux", callback_data="prog"),
+        types.InlineKeyboardButton("Материалы Frontend", callback_data="learnfrontend")
     )
-    keyboard.row(
-        types.InlineKeyboardButton("Железо", callback_data="hardware"),
-        types.InlineKeyboardButton("Прочее", callback_data="others")
+    keyboard.add(
+        types.InlineKeyboardButton("PhotoShop2024 (1000 SKM)", callback_data="buy_-1000_photoshop2024")
     )
     return keyboard
 
